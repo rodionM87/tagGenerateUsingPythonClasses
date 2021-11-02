@@ -1,0 +1,126 @@
+class HTML:
+  def __init__(self, output):
+    self.output = output
+    self.children = []
+
+  def __iadd__(self, other):
+    self.children.append(other)
+    return self
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    if self.output is not None:
+      with open(self.output, 'w') as fd:
+        fd.write(str(self))
+    else:
+      print(self)
+
+  def __str__(self):
+    tag = "<html>\n"
+    for child in self.children:
+      tag += str(child)
+    tag += "</html>\n"
+    return tag
+
+class TopLevelTag:
+  def __init__(self, tag):
+    self.tag = tag
+    self.children = []
+
+  def __iadd__(self, other):
+    self.children.append(other)
+    return self
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    pass
+
+  def __str__(self):
+    TopTag = "<%s>\n" % self.tag
+    for child in self.children:
+      TopTag += str(child)
+    TopTag += "</%s>\n" % self.tag
+    return TopTag
+
+class Tag:
+  def __init__(self, tag, klass=None, is_single=False, **kwargs):
+    self.tag = tag
+    self.attribute = {}
+    self.text = ""
+    self.is_single = is_single
+    self.children = []
+    self.klass = klass
+    self.kwargs = kwargs
+
+  for attr, value in kwargs.items():
+    self.attribute[attr] = value
+
+  if self.klass is not None:
+    self.attribute["class"] = " ".join(self.klass)
+
+  def __iadd__(self, other):
+    self.children.append(other)
+    return self
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    pass
+
+  def __str__(self):
+    attrs = []
+    for attr, value in self.attribute.items():
+      attrs.append('{attr}="{value}"'.format(attr=attr, value=value))
+    attrs = " ".join(attrs)
+
+    length_children = len(self.children)
+
+    if length_children > 1:
+
+      some_var = "<{tag} {attr}>\n".format(tag=self.tag, attr=attrs)
+
+      for child in self.children:
+        some_var += str(child)
+      some_var += "</%s>\n" % self.tag
+      return some_var
+    else:
+      if self.is_single:
+        some_var = "<{tag} {attrs}>\n".format(tag=self.tag, attrs=attrs)
+      return some_var
+
+      else:
+        some_var = "<{tag} {attrs}>{text}</{tag}>\n".format(tag=self.tag, attrs=attrs, text=self.text)
+        return some_var
+
+def main(output=None):
+  with HTML(output=output) as doc:
+    with TopLevelTag("head") as head:
+      with Tag("title") as title:
+        title.text = "hello"
+        head += title
+      doc += head
+
+    with TopLevelTag("body") as body:
+      with Tag("h1", klass=("main-text",)) as h1:
+        h1.text = "Test"
+        body += h1
+
+      with Tag("div", klass=("container", "container-fluid"), id="lead") as div:
+        with Tag("p") as paragraph:
+          paragraph.text = "another test"
+          div += paragraph
+
+        with Tag("img", is_single=True, src="/icon.png", data_image="responsive") as img:
+          div += img
+
+        body += div
+
+      doc += body
+
+if __name__ == "__main__":
+main("test.html")
